@@ -365,78 +365,116 @@ const DEFS: Record<string, string> = {
     "Il punteggio MTA (atrofia del lobo temporale mediale) distingue i pazienti con disturbo cognitivo lieve (MCI) o morbo di Alzheimer da quelli senza problemi. Funziona bene nello screening della demenza, con accuratezza ~75% nella diagnosi e ~85% nel confermare la malattia di Alzheimer.",
 };
 
-/* =================== MENU ESPLORA ESPERTI ====================== */
-type Voce = { label: string; info?: string };
-const MENU_ESPERTI: { id: string; label: string; voci: Voce[] }[] = [
+/* =================== MENU ESPLORA ESPERTI (slide 29) =========== */
+type Voce = { label: string; info?: string; note?: string };
+const MENU_ESPERTI: { id: string; label: string; voci: Voce[]; caption?: string }[] = [
   {
     id: "pop",
     label: "Popolazione",
     voci: [
-      { label: "Sani", info: DEFS["Sani"] },
-      { label: "Subjective Cognitive Decline (SCD)", info: DEFS["Subjective Cognitive Decline (SCD)"] },
-      { label: "Mild Cognitive Impairment (MCI)", info: DEFS["Mild Cognitive Impairment (MCI)"] },
+      { label: "Soggetti Sani" },
+      { label: "Subjective Cognitive Decline", info: DEFS["Subjective Cognitive Decline (SCD)"] },
+      { label: "Mild Cognitive Impairment", info: DEFS["Mild Cognitive Impairment (MCI)"] },
       { label: "Demenza Lieve", info: DEFS["Demenza Lieve"] },
     ],
   },
-  { id: "demo", label: "Dati demografici", voci: [{ label: "Età" }, { label: "Sesso" }, { label: "Scolarità" }] },
-  { id: "psico", label: "Dati psicometrici", voci: [{ label: "MMSE" }, { label: "Memoria" }, { label: "Funzioni esecutive" }, { label: "Linguaggio" }] },
-  { id: "audio", label: "Dati audiometrici", voci: [{ label: "Audiometria (125–8000 Hz)" }, { label: "Valore BEPTA" }, { label: "Perdita uditiva" }] },
+  {
+    id: "demo",
+    label: "Dati demografici",
+    voci: [
+      { label: "Età", note: "Rimanda alle fasce: 60-64, 65-69, 70-74, 75-80." },
+      { label: "Sesso" },
+      { label: "Professione", note: "Rimanda alle 648 professioni della classificazione ISTAT." },
+      { label: "Esposizione al rumore lavoro-correlato", note: "Rimanda a 3 indici: alta, media, bassa." },
+    ],
+  },
+  {
+    id: "psico",
+    label: "Dati psicometrici",
+    caption: "9 categorie × 20 variabili",
+    voci: [
+      { label: "Quadro cognitivo globale" },
+      { label: "Attenzione e Funzioni Esecutive" },
+      { label: "Memoria" },
+      { label: "Linguaggio" },
+      { label: "Prassia" },
+      { label: "Scale comportamentali" },
+      { label: "Consapevolezza" },
+      { label: "Benessere psicosociale" },
+      { label: "NESI" },
+    ],
+  },
+  {
+    id: "audio",
+    label: "Dati audiometrici",
+    caption: "Presenza / assenza di perdita di acuità uditiva",
+    voci: [
+      { label: "Perdita di udito rumore-correlata" },
+      { label: "Nessuna perdita di udito rumore-correlata" },
+    ],
+  },
   {
     id: "neuro",
     label: "Dati di neuroimaging",
+    caption: "Rimanda a 3 indici",
     voci: [
       { label: "Fazekas", info: DEFS["Fazekas"] },
       { label: "ERICA", info: DEFS["ERICA"] },
       { label: "MTA", info: DEFS["MTA"] },
-      { label: "Volume MRI (sottocorticale)" },
-      { label: "Spessore corticale MRI" },
     ],
   },
 ];
 
-/* ===================== DOMANDE ESPERTI (slide 33, 2↔4) ========= */
+/* ===================== QUERIES ESPERTO (file Queries) =========
+ * Analisi DESCRITTIVE realmente implementate nelle macro: conteggi
+ * (CountIf/CountIfs), percentuali per gruppo e confronto tra proporzioni
+ * in punti percentuali (soglia 10 pp). Nessun test inferenziale
+ * (no chi-quadrato, ANOVA, regressione logistica/lineare, odds ratio). */
 const DOMANDE_ESPERTI: { q: string; calcolo: string; excel?: boolean }[] = [
   {
-    q: "Come varia l'esposizione al rumore lavoro-correlato in funzione della tipologia (industriale, aviazione, parlato, edile, ecc.) nella popolazione studiata?",
+    q: "Come varia l'esposizione al rumore lavoro-correlato in funzione della tipologia (industriale, aviazione, edile, musica, parlato, marina) nella popolazione studiata?",
     calcolo:
-      "Il database raggruppa i soggetti per tipologia di rumore e calcola, per ciascun gruppo, media e deviazione standard del LEX,8h, con un test di confronto tra gruppi (ANOVA).",
+      "Per ciascuna delle 6 tipologie di rumore si contano i soggetti e, per ognuna, quanti ricadono nei livelli di esposizione Alta (0), Media (1) e Bassa (2); si calcolano le percentuali per livello e si individua il profilo prevalente di ogni tipologia. Confronto descrittivo: si evidenziano le tipologie con la maggiore e la minore quota di alta esposizione.",
   },
   {
-    // ex n.4 (scambiata con la 2)
-    q: "I diversi livelli di esposizione al rumore discriminano tra punteggi sopra e sotto il cut-off del MMSE (Mini Mental State Examination, test che valuta la cognizione globale)?",
+    q: "La tipologia del rumore ha effetti diversi su rapidità del processo informativo (TMT-A), task switching (TMT-B), memoria a breve termine (FCSRT immediate) e memoria a lungo termine (FCSRT delayed)?",
     calcolo:
-      "Una macro confronta i soggetti sopra e sotto il cut-off del MMSE rispetto ai livelli di esposizione, calcolando le frequenze per cella e un test di associazione (chi-quadrato).",
+      "Per ciascuna tipologia e per ciascun test si conta quanti soggetti cadono sotto il cut-off clinico (TMT-A > 93 sec, TMT-B > 282 sec, FCSRT immediate < 19,59, FCSRT delayed < 6,31) e si calcola la percentuale sotto cut-off. A ogni gruppo si assegna un profilo descrittivo: Critico (≥ 50%), Moderato (25–49%), Buono (< 25%).",
+  },
+  {
+    q: "I diversi livelli di esposizione al rumore discriminano la presenza o l'assenza di perdita di acuità uditiva?",
+    calcolo:
+      "Per i tre gruppi di esposizione (Alta, Media, Bassa) si contano i soggetti con e senza perdita uditiva e si calcola la percentuale con perdita. Si confronta la differenza in punti percentuali tra Alta e Bassa esposizione: se ≥ 10 pp l'esposizione discrimina, differenze minori indicano assenza di discriminazione. Nessun test inferenziale.",
+  },
+  {
+    q: "I diversi livelli di esposizione al rumore discriminano tra punteggi sopra e sotto il cut-off del MMSE (cut-off = 23)?",
+    calcolo:
+      "Per i tre gruppi di esposizione si contano i soggetti sotto cut-off (MMSE ≤ 23) e sopra, e si calcola la percentuale sotto cut-off. Si confronta la differenza Alta vs Bassa in punti percentuali (soglia 10 pp) per stabilire se l'esposizione discrimina il punteggio MMSE.",
     excel: true,
   },
   {
-    q: "I diversi livelli di esposizione al rumore discriminano tra presenza o assenza di perdita di acuità uditiva?",
+    q: "Chi è stato esposto ad alti livelli di rumore sviluppa una maggiore perdita di volume dell'ippocampo (MTA ≥ 2)?",
     calcolo:
-      "Il sistema incrocia la classe di esposizione con la variabile audiometrica «perdita uditiva (sì/no)», riportando proporzioni per gruppo e test di associazione.",
+      "Per i tre gruppi di esposizione si conta quanti soggetti hanno MTA ≥ 2 e si calcola la percentuale. Si confronta la differenza Alta vs Bassa in punti percentuali (soglia 10 pp): una differenza positiva ≥ 10 pp indica maggiore atrofia ippocampale nei più esposti.",
   },
   {
-    // ex n.2 (scambiata con la 4)
-    q: "La tipologia del rumore ha effetti diversi su rapidità, inibizione degli stimoli non rilevanti, facilità nel passare da un compito all'altro e memoria?",
+    q: "I livelli di esposizione al rumore predicono il punteggio della cognizione globale (MMSE)?",
     calcolo:
-      "Per ciascun dominio cognitivo il database confronta i punteggi medi tra le tipologie di rumore tramite modelli di confronto multiplo.",
-  },
-  {
-    q: "Alti livelli di esposizione al rumore predicono una perdita di volume dell'ippocampo (MTA ≥ 2)?",
-    calcolo:
-      "Un modello di regressione logistica stima la probabilità di MTA ≥ 2 in funzione dell'esposizione cumulata, riportando odds ratio e intervallo di confidenza.",
+      "Per i tre gruppi di esposizione si calcola la percentuale di soggetti sotto il cut-off del MMSE (indicatore della cognizione globale) e si confrontano le proporzioni Alta vs Bassa in punti percentuali (soglia 10 pp). Analisi descrittiva, senza regressione.",
   },
 ];
 
-/* Esempio di risultato della query sul foglio Excel (slide 34) */
+/* Esempio di risultato della query MMSE sul foglio (macro AnalisiCompletaEsposizioneMMSE) */
 const ESEMPIO_EXCEL_MMSE = {
-  titolo: "DatabaseSperimentale_INAIL_def — Foglio1",
-  intestazioni: ["Livello esposizione", "MMSE < cut-off", "MMSE ≥ cut-off", "Totale"],
+  titolo: "AnalisiCompletaEsposizioneMMSE — output sul foglio",
+  intestazioni: ["Gruppo", "N totale", "N sotto cutoff (≤23)", "N sopra cutoff (>23)", "% sotto cutoff"],
   righe: [
-    ["0 — Bassa", "4", "38", "42"],
-    ["1 — Media", "9", "29", "38"],
-    ["2 — Alta", "15", "11", "26"],
-    ["Totale", "28", "78", "106"],
+    ["Alta esposizione (0)", "26", "8", "18", "30,8%"],
+    ["Media esposizione (1)", "38", "7", "31", "18,4%"],
+    ["Bassa esposizione (2)", "42", "4", "38", "9,5%"],
   ],
-  esito: "χ² = 18,7 · p < 0,001 — l'associazione tra livello di esposizione e punteggio MMSE sotto cut-off è statisticamente significativa.",
+  esito:
+    "Differenza Alta vs Bassa = 21,3 punti percentuali (≥ 10 pp): nel campione i soggetti con alta esposizione cadono sotto il cut-off MMSE più spesso, quindi l'esposizione discrimina il punteggio. Confronto descrittivo tra proporzioni, senza test inferenziale.",
 };
 
 /* ============================================================== */
@@ -1332,42 +1370,64 @@ function EspertiMenu({ nav }: { nav: Nav }) {
 function EspertiEsplora() {
   const [open, setOpen] = React.useState<string | null>("pop");
   const [pop, setPop] = React.useState<{ titolo: string; testo: string } | null>(null);
+
+  const Param = ({ v }: { v: Voce }) => {
+    const def = v.info || v.note;
+    if (!def) {
+      return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{v.label}</span>;
+    }
+    return (
+      <span className="relative inline-block">
+        <button
+          onClick={() => setPop({ titolo: v.label, testo: def })}
+          className="group inline-flex cursor-help items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 transition hover:bg-slate-200"
+        >
+          {v.label}
+          <Info size={12} className="text-slate-400" />
+          {/* pop-up a comparsa al passaggio del mouse */}
+          <span className="pointer-events-none absolute left-0 top-full z-50 mt-1 hidden w-72 rounded-lg border border-slate-200 bg-white p-3 text-left text-[11px] font-normal leading-relaxed text-slate-600 shadow-lg group-hover:block">
+            <span className="mb-1 block font-bold" style={{ color: PAF.petrol }}>{v.label}</span>
+            {def}
+          </span>
+        </button>
+      </span>
+    );
+  };
+
   return (
     <div>
-      <h3 className="mb-1 text-sm font-bold">Esplora i dati per criteri di interesse</h3>
-      <p className="mb-4 text-xs text-slate-500">
-        Seleziona i criteri (<Kw>input</Kw>); l'anteprima del database mostra le variabili corrispondenti
-        (<Kw>output</Kw>). Le voci con <Info size={11} className="inline" /> aprono una spiegazione.
+      <SectionTitle>Esplora dati</SectionTitle>
+      <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
+        Attraverso questa piattaforma puoi <Kw>selezionare i criteri</Kw> con cui visualizzare i dati
+        raccolti finora da ricercatori e tecnici. Seleziona una delle opzioni nei menù a tendina
+        (<Kw>input</Kw>); l'output mostra i dati corrispondenti.
+      </p>
+      <p className="mx-auto mt-2 max-w-lg text-center text-[11px] text-slate-400">
+        Le voci con <Info size={11} className="inline" /> mostrano una spiegazione al passaggio del mouse.
       </p>
 
-      <div className="grid gap-2">
+      <div className="mt-6 grid gap-2">
         {MENU_ESPERTI.map((m) => (
           <div key={m.id} className="rounded-md border border-slate-200">
-            <button onClick={() => setOpen(open === m.id ? null : m.id)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold">
+            <button onClick={() => setOpen(open === m.id ? null : m.id)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold" style={{ color: PAF.petrol }}>
               {m.label}
               <ChevronDown size={16} className={`transition ${open === m.id ? "rotate-180" : ""}`} />
             </button>
             {open === m.id && (
-              <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3">
-                {m.voci.map((v) => (
-                  <span key={v.label} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-                    {v.label}
-                    {v.info && (
-                      <button onClick={() => setPop({ titolo: v.label, testo: v.info! })} aria-label="Spiegazione" className="text-slate-400 hover:text-slate-700">
-                        <Info size={13} />
-                      </button>
-                    )}
-                  </span>
-                ))}
+              <div className="border-t border-slate-100 px-4 py-3">
+                {m.caption && <div className="mb-2 text-[11px] italic text-slate-400">{m.caption}</div>}
+                <div className="flex flex-wrap gap-2">
+                  {m.voci.map((v) => <Param key={v.label} v={v} />)}
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Anteprima del foglio Excel del database */}
+      {/* Output: anteprima del database */}
       <h3 className="mb-2 mt-6 flex items-center gap-2 text-sm font-bold" style={{ color: PAF.petrol }}>
-        <FileSpreadsheet size={16} /> Anteprima del database (output)
+        <FileSpreadsheet size={16} /> Output — anteprima dei dati
       </h3>
       <ExcelPreview />
 
@@ -1421,8 +1481,10 @@ function DomandeEsperti() {
     <div>
       <SectionTitle>Interroga il database</SectionTitle>
       <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        L'esperto può interrogare il database a partire dalle <Kw>queries</Kw> proposte. Seleziona una
-        domanda: oltre alla logica del calcolo, dove disponibile vedi l'<Kw>esempio del risultato sul foglio Excel</Kw>.
+        L'esperto interroga il database a partire dalle <Kw>queries</Kw> proposte. Le analisi sono{" "}
+        <Kw>descrittive</Kw> (conteggi e percentuali per gruppo, confronto tra proporzioni in punti
+        percentuali): seleziona una domanda per vedere come viene fatto il calcolo, con l'<Kw>esempio del
+        risultato sul foglio Excel</Kw> dove disponibile.
       </p>
       <div className="mt-6 grid gap-2">
         {DOMANDE_ESPERTI.map((d, i) => (
@@ -1454,7 +1516,7 @@ function DomandeEsperti() {
                         </thead>
                         <tbody>
                           {ESEMPIO_EXCEL_MMSE.righe.map((r, ri) => (
-                            <tr key={ri} className={ri === ESEMPIO_EXCEL_MMSE.righe.length - 1 ? "font-bold" : ""}>
+                            <tr key={ri}>
                               {r.map((c, ci) => (
                                 <td key={ci} className="border border-slate-200 px-3 py-1.5 text-slate-700">{c}</td>
                               ))}
