@@ -255,20 +255,17 @@ function Breadcrumb({ screen, onBack, canBack }: { screen: Screen; onBack: () =>
 /* INDICATIVO — sostituire con la routine Python ufficiale (NESI). */
 type Classe = { nome: string; color: string; descrizione: string };
 
-function classeDa(lex: number): Classe {
-  if (lex < 80) return { nome: "BASSA", color: PAF.green, descrizione: "Sotto il valore inferiore di azione (80 dB(A))." };
-  if (lex < 85) return { nome: "MEDIA", color: PAF.amber, descrizione: "Tra il valore inferiore (80) e superiore (85) di azione." };
-  if (lex < 87) return { nome: "ALTA", color: PAF.orange, descrizione: "Tra il valore superiore di azione (85) e il valore limite (87)." };
-  return { nome: "MOLTO ALTA", color: PAF.redClass, descrizione: "Pari o oltre il valore limite di esposizione (87 dB(A))." };
-}
-
-// Livello base in dB(A) inferito dallo sforzo vocale (Nesi, Guest 2018, indicativo)
-const LIVELLO_SFORZO: Record<string, number> = {
-  normale: 70,
-  alzato: 78,
-  "molto alzato": 85,
-  grido: 92,
-};
+// Categorie di sforzo vocale NESI (slide 10) → livello dB(A) indicativo (Nesi, Guest 2018)
+const SFORZO_NESI: { v: string; label: string; lex: number }[] = [
+  { v: "normale", label: "Parlare normalmente da 1,2 m", lex: 60 },
+  { v: "alzata", label: "Alzare la voce da 1,2 m", lex: 66 },
+  { v: "alta", label: "Parlare a voce alta da 1,2 m", lex: 72 },
+  { v: "moltoalta", label: "Parlare a voce molto alta da 1,2 m", lex: 78 },
+  { v: "grido12", label: "Gridare da 1,2 m", lex: 84 },
+  { v: "grido06", label: "Gridare da 0,6 m", lex: 90 },
+  { v: "urlo", label: "Urlare nell'orecchio del tuo interlocutore", lex: 96 },
+];
+const LIVELLO_SFORZO: Record<string, number> = Object.fromEntries(SFORZO_NESI.map((s) => [s.v, s.lex]));
 
 function calcolaLex(input: {
   sforzo: string;
@@ -350,33 +347,97 @@ const EFFETTI_INDIRETTI = [
   "Affaticamento e ridotta concentrazione",
 ];
 
-/* ===================== DOMANDE ESPERTI ========================= */
-const DOMANDE_ESPERTI = [
+/* ===================== DEFINIZIONI POP-UP (slide 30/31) ========= */
+const DEFS: Record<string, string> = {
+  "Sani":
+    "Soggetti senza deficit cognitivi clinicamente rilevanti, con prestazioni nella norma ai test: costituiscono il gruppo di riferimento (controllo).",
+  "Subjective Cognitive Decline (SCD)":
+    "Il Declino Cognitivo Soggettivo (SCD) indica l'esperienza soggettiva di un peggioramento delle proprie capacità cognitive (in particolare della memoria) che persiste nel tempo in persone con capacità oggettive conservate. Si ritiene possa rappresentare una fase preclinica della malattia di Alzheimer: uno stadio molto precoce che precede la comparsa di sintomi clinicamente evidenti.",
+  "Mild Cognitive Impairment (MCI)":
+    "Il Mild Cognitive Impairment (MCI), o Disturbo Cognitivo Lieve, rappresenta una fase intermedia tra il normale invecchiamento e la demenza. Comporta lievi difficoltà di memoria, attenzione o linguaggio riscontrabili ai test clinici, che però non compromettono l'autonomia quotidiana in compiti di facile attuazione.",
+  "Demenza Lieve":
+    "Con Demenza Lieve si intende una mancanza di indipendenza nelle attività quotidiane e una compromissione moderata delle capacità cognitive.",
+  "Fazekas":
+    "La scala di Fazekas quantifica l'estensione delle lesioni in aree profonde del cervello, solitamente esito di micro-eventi ischemici. Tali lesioni, conseguenza di una malattia dei piccoli vasi, possono essere asintomatiche o associarsi a un rallentamento dell'elaborazione cognitiva e del funzionamento esecutivo.",
+  "ERICA":
+    "I punteggi ERICA aiutano a identificare visivamente i pazienti con malattia di Alzheimer valutando la perdita di volume della corteccia entorinale (sintomo prodromico). Il punteggio varia da 0 a 3: valori più alti indicano maggiore atrofia e maggiore probabilità di malattia di Alzheimer.",
+  "MTA":
+    "Il punteggio MTA (atrofia del lobo temporale mediale) distingue i pazienti con disturbo cognitivo lieve (MCI) o morbo di Alzheimer da quelli senza problemi. Funziona bene nello screening della demenza, con accuratezza ~75% nella diagnosi e ~85% nel confermare la malattia di Alzheimer.",
+};
+
+/* =================== MENU ESPLORA ESPERTI ====================== */
+type Voce = { label: string; info?: string };
+const MENU_ESPERTI: { id: string; label: string; voci: Voce[] }[] = [
   {
-    q: "I diversi livelli di esposizione discriminano tra presenza e assenza di perdita uditiva?",
-    calcolo:
-      "Il sistema confronta i soggetti del database stratificati per classe di LEX,8h (BASSA / MEDIA / ALTA / MOLTO ALTA) rispetto alla variabile audiometrica «perdita uditiva (sì/no)», calcolando proporzioni per gruppo e un test di associazione (chi-quadrato) sulle frequenze osservate.",
+    id: "pop",
+    label: "Popolazione",
+    voci: [
+      { label: "Sani", info: DEFS["Sani"] },
+      { label: "Subjective Cognitive Decline (SCD)", info: DEFS["Subjective Cognitive Decline (SCD)"] },
+      { label: "Mild Cognitive Impairment (MCI)", info: DEFS["Mild Cognitive Impairment (MCI)"] },
+      { label: "Demenza Lieve", info: DEFS["Demenza Lieve"] },
+    ],
   },
+  { id: "demo", label: "Dati demografici", voci: [{ label: "Età" }, { label: "Sesso" }, { label: "Scolarità" }] },
+  { id: "psico", label: "Dati psicometrici", voci: [{ label: "MMSE" }, { label: "Memoria" }, { label: "Funzioni esecutive" }, { label: "Linguaggio" }] },
+  { id: "audio", label: "Dati audiometrici", voci: [{ label: "Audiometria (125–8000 Hz)" }, { label: "Valore BEPTA" }, { label: "Perdita uditiva" }] },
   {
-    q: "L'esposizione discrimina tra punteggi sopra e sotto il cut-off dei test cognitivi?",
-    calcolo:
-      "Per ciascun test cognitivo il database confronta la distribuzione del LEX,8h tra chi è sopra e chi è sotto il cut-off clinico, riportando medie, deviazioni standard e un test di confronto tra gruppi (t-test / Mann-Whitney secondo la distribuzione).",
-  },
-  {
-    q: "Esiste una relazione dose-risposta tra esposizione cumulata e neuroimaging?",
-    calcolo:
-      "Il sistema mette in relazione l'esposizione cumulata (LEX,8h × anni) con gli indici di neuroimaging tramite un modello di regressione, riportando coefficiente, intervallo di confidenza e qualità del fit.",
+    id: "neuro",
+    label: "Dati di neuroimaging",
+    voci: [
+      { label: "Fazekas", info: DEFS["Fazekas"] },
+      { label: "ERICA", info: DEFS["ERICA"] },
+      { label: "MTA", info: DEFS["MTA"] },
+      { label: "Volume MRI (sottocorticale)" },
+      { label: "Spessore corticale MRI" },
+    ],
   },
 ];
 
-/* =================== MENU ESPLORA ESPERTI ====================== */
-const MENU_ESPERTI = [
-  { id: "pop", label: "Popolazione", voci: ["Lavoratori esposti", "Pensionati", "Gruppo di controllo"] },
-  { id: "demo", label: "Dati demografici", voci: ["Età", "Sesso", "Scolarità"] },
-  { id: "psico", label: "Dati psicometrici", voci: ["Funzioni esecutive", "Memoria", "Attenzione"] },
-  { id: "audio", label: "Dati audiometrici", voci: ["Soglia tonale", "Perdita uditiva", "Acufeni"] },
-  { id: "neuro", label: "Dati di neuroimaging", voci: ["Volumetria", "Sostanza bianca", "Connettività"] },
+/* ===================== DOMANDE ESPERTI (slide 33, 2↔4) ========= */
+const DOMANDE_ESPERTI: { q: string; calcolo: string; excel?: boolean }[] = [
+  {
+    q: "Come varia l'esposizione al rumore lavoro-correlato in funzione della tipologia (industriale, aviazione, parlato, edile, ecc.) nella popolazione studiata?",
+    calcolo:
+      "Il database raggruppa i soggetti per tipologia di rumore e calcola, per ciascun gruppo, media e deviazione standard del LEX,8h, con un test di confronto tra gruppi (ANOVA).",
+  },
+  {
+    // ex n.4 (scambiata con la 2)
+    q: "I diversi livelli di esposizione al rumore discriminano tra punteggi sopra e sotto il cut-off del MMSE (Mini Mental State Examination, test che valuta la cognizione globale)?",
+    calcolo:
+      "Una macro confronta i soggetti sopra e sotto il cut-off del MMSE rispetto ai livelli di esposizione, calcolando le frequenze per cella e un test di associazione (chi-quadrato).",
+    excel: true,
+  },
+  {
+    q: "I diversi livelli di esposizione al rumore discriminano tra presenza o assenza di perdita di acuità uditiva?",
+    calcolo:
+      "Il sistema incrocia la classe di esposizione con la variabile audiometrica «perdita uditiva (sì/no)», riportando proporzioni per gruppo e test di associazione.",
+  },
+  {
+    // ex n.2 (scambiata con la 4)
+    q: "La tipologia del rumore ha effetti diversi su rapidità, inibizione degli stimoli non rilevanti, facilità nel passare da un compito all'altro e memoria?",
+    calcolo:
+      "Per ciascun dominio cognitivo il database confronta i punteggi medi tra le tipologie di rumore tramite modelli di confronto multiplo.",
+  },
+  {
+    q: "Alti livelli di esposizione al rumore predicono una perdita di volume dell'ippocampo (MTA ≥ 2)?",
+    calcolo:
+      "Un modello di regressione logistica stima la probabilità di MTA ≥ 2 in funzione dell'esposizione cumulata, riportando odds ratio e intervallo di confidenza.",
+  },
 ];
+
+/* Esempio di risultato della query sul foglio Excel (slide 34) */
+const ESEMPIO_EXCEL_MMSE = {
+  titolo: "DatabaseSperimentale_INAIL_def — Foglio1",
+  intestazioni: ["Livello esposizione", "MMSE < cut-off", "MMSE ≥ cut-off", "Totale"],
+  righe: [
+    ["0 — Bassa", "4", "38", "42"],
+    ["1 — Media", "9", "29", "38"],
+    ["2 — Alta", "15", "11", "26"],
+    ["Totale", "28", "78", "106"],
+  ],
+  esito: "χ² = 18,7 · p < 0,001 — l'associazione tra livello di esposizione e punteggio MMSE sotto cut-off è statisticamente significativa.",
+};
 
 /* ============================================================== */
 /* ============================ APP ============================= */
@@ -392,7 +453,9 @@ export default function QuietBrainApp() {
   const [dpiSelezionato, setDpiSelezionato] = React.useState<DPI | null>(null);
   const [proporzioneDPI, setProporzioneDPI] = React.useState(50); // % tempo d'uso DPI
   const [oreGiorno, setOreGiorno] = React.useState(8);
-  const [anni, setAnni] = React.useState(10);
+  const [anniLav, setAnniLav] = React.useState(10);
+  const [settimaneLav, setSettimaneLav] = React.useState(46);
+  const [giorniSett, setGiorniSett] = React.useState(5);
 
   const nav: Nav = {
     go: (s) => {
@@ -410,7 +473,7 @@ export default function QuietBrainApp() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 py-6" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+    <div className="min-h-screen w-full bg-slate-100 py-6" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif", color: PAF.ink }}>
       <div className="mx-auto max-w-3xl px-4">
         <PortalChrome />
         <AppHeader onHome={() => { setScreen("home"); setHistory([]); }} />
@@ -426,7 +489,9 @@ export default function QuietBrainApp() {
               dpiSelezionato, setDpiSelezionato,
               proporzioneDPI, setProporzioneDPI,
               oreGiorno, setOreGiorno,
-              anni, setAnni,
+              anniLav, setAnniLav,
+              settimaneLav, setSettimaneLav,
+              giorniSett, setGiorniSett,
             }}
           />
         </div>
@@ -443,7 +508,9 @@ type SimState = {
   dpiSelezionato: DPI | null; setDpiSelezionato: (v: DPI | null) => void;
   proporzioneDPI: number; setProporzioneDPI: (v: number) => void;
   oreGiorno: number; setOreGiorno: (v: number) => void;
-  anni: number; setAnni: (v: number) => void;
+  anniLav: number; setAnniLav: (v: number) => void;
+  settimaneLav: number; setSettimaneLav: (v: number) => void;
+  giorniSett: number; setGiorniSett: (v: number) => void;
 };
 
 function Router({ screen, nav, sim }: { screen: Screen; nav: Nav; sim: SimState }) {
@@ -552,7 +619,7 @@ function SelezionaLavoro({ nav, sim }: { nav: Nav; sim: SimState }) {
           value={sim.professione}
           onChange={(e) => sim.setProfessione(e.target.value)}
           placeholder="Es. operaio metalmeccanico"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500"
         />
         <p className="mt-1 text-[11px] text-slate-400">Classificazione ISTAT delle professioni (648 voci).</p>
         <div className="mt-5">
@@ -685,38 +752,42 @@ function SimIntro({ nav }: { nav: Nav }) {
   );
 }
 
-/* ===================== SFORZO VOCALE ======================== */
+/* ===================== SFORZO VOCALE (NESI) ================ */
 function SforzoVocale({ nav, sim }: { nav: Nav; sim: SimState }) {
-  const opzioni = [
-    { v: "normale", l: "Voce normale", d: "Conversazione tranquilla, nessuno sforzo." },
-    { v: "alzato", l: "Voce alzata", d: "Devi alzare un po' la voce per farti capire." },
-    { v: "molto alzato", l: "Voce molto alzata", d: "Devi parlare forte, quasi gridando." },
-    { v: "grido", l: "Grido", d: "Devi gridare per essere compreso a 1,2 m." },
-  ];
   return (
     <div>
+      <div className="text-center text-sm font-bold" style={{ color: PAF.petrol }}>Sezione Lavoro</div>
       <SectionTitle>Sforzo vocale richiesto</SectionTitle>
-      <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Quanto devi <Kw>alzare la voce</Kw> per farti capire da una persona a <Kw>1,2 m</Kw> di distanza
-        nel tuo ambiente di lavoro?
+      <p className="mt-4 text-sm leading-relaxed text-slate-600">
+        Per selezionare il livello di esposizione al rumore dalla tabella, immagina di essere al lavoro e
+        di dover <Kw>parlare con una persona a circa 1,2 metri di distanza</Kw>. Supponi che il tuo
+        interlocutore abbia un udito normale, non indossi protezioni acustiche e che tu possa vedere
+        chiaramente volti e gesti. In base allo <Kw>sforzo vocale</Kw> che dovresti fare per farti capire
+        in questa situazione, scegli il livello di rumore corrispondente.
       </p>
-      <div className="mx-auto mt-6 grid max-w-md gap-2">
-        {opzioni.map((o) => (
-          <button
-            key={o.v}
-            onClick={() => sim.setSforzo(o.v)}
-            className="flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition"
-            style={{ borderColor: sim.sforzo === o.v ? PAF.petrol : PAF.line, background: sim.sforzo === o.v ? "#ECFDF5" : "#fff" }}
-          >
-            <span>
-              <span className="font-bold">{o.l}</span>
-              <span className="block text-xs text-slate-500">{o.d}</span>
-            </span>
-            {sim.sforzo === o.v && <ChevronRight size={16} style={{ color: PAF.petrol }} />}
-          </button>
-        ))}
+      <p className="mt-2 text-[11px] italic text-slate-400">Scala dello sforzo vocale — Nesi, Guest (2018).</p>
+
+      <div className="mt-5 overflow-hidden rounded-lg border border-slate-200">
+        <div className="px-4 py-2.5 text-sm font-bold text-white" style={{ background: PAF.petrol }}>Sforzo vocale richiesto</div>
+        {SFORZO_NESI.map((o) => {
+          const sel = sim.sforzo === o.v;
+          return (
+            <button
+              key={o.v}
+              onClick={() => sim.setSforzo(o.v)}
+              className="flex w-full items-center justify-between border-t border-slate-100 px-4 py-3 text-left text-sm text-slate-700 transition"
+              style={{ background: sel ? "#ECFDF5" : "#fff" }}
+            >
+              <span className={sel ? "font-bold" : ""}>{o.label}</span>
+              <span className="grid h-5 w-5 place-items-center rounded-full border" style={{ borderColor: sel ? PAF.petrol : "#cbd5e1", background: sel ? PAF.petrol : "#fff" }}>
+                {sel && <span className="h-2 w-2 rounded-full bg-white" />}
+              </span>
+            </button>
+          );
+        })}
       </div>
-      <div className="mx-auto mt-6 max-w-md">
+
+      <div className="mt-6">
         <PrimaryButton full onClick={() => nav.go("usoDPI")}>
           Continua <ChevronRight size={16} />
         </PrimaryButton>
@@ -793,12 +864,12 @@ function SelezionaDPI({ nav, sim }: { nav: Nav; sim: SimState }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Cerca marca o modello…"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500"
         />
         <select
           value={ordina}
           onChange={(e) => setOrdina(e.target.value as "snr" | "tipo" | "marca")}
-          className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+          className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500"
         >
           <option value="snr">Ordina per SNR</option>
           <option value="tipo">Ordina per tipologia</option>
@@ -842,15 +913,17 @@ function SelezionaDPI({ nav, sim }: { nav: Nav; sim: SimState }) {
         Elenco dimostrativo: collegare la banca dati DPI reale del Portale Agenti Fisici.
       </p>
 
-      {/* barra proporzione tempo d'uso DPI */}
+      {/* barra proporzione tempo d'uso DPI — più grande, con consegna (slide 13) */}
       {sel && (
-        <div className="mx-auto mt-6 max-w-md rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold" style={{ color: PAF.petrol }}>
-            <ShieldCheck size={16} /> Proporzione di tempo di utilizzo dei DPI
+        <div className="mx-auto mt-6 max-w-2xl rounded-lg border-2 p-5" style={{ borderColor: PAF.petrol, background: "#F0FDFA" }}>
+          <div className="mb-2 flex items-center gap-2 text-base font-extrabold" style={{ color: PAF.petrol }}>
+            <ShieldCheck size={20} /> Stima del tempo di utilizzo del DPI
           </div>
-          <p className="mb-3 text-xs text-slate-500">
-            Hai selezionato <Kw>{sel.marca} {sel.modello}</Kw> (SNR {sel.snr} dB). Per quale percentuale del
-            tempo di esposizione lo indossi effettivamente?
+          <p className="text-sm leading-relaxed text-slate-600">
+            Indica la <Kw>proporzione di tempo</Kw> in cui hai indossato il DPI selezionato
+            (<Kw>{sel.marca} {sel.modello}</Kw>). La proporzione è un valore compreso tra{" "}
+            <Kw>0</Kw> ("mai indossato") e <Kw>1</Kw> ("indossato per l'intero periodo di esposizione").
+            Ad esempio, se lo hai indossato per il 20% del tempo corrisponde a 0,20.
           </p>
           <input
             type="range"
@@ -859,10 +932,14 @@ function SelezionaDPI({ nav, sim }: { nav: Nav; sim: SimState }) {
             step={5}
             value={sim.proporzioneDPI}
             onChange={(e) => sim.setProporzioneDPI(Number(e.target.value))}
-            className="w-full"
-            style={{ accentColor: PAF.petrol }}
+            className="mt-4 h-3 w-full cursor-pointer appearance-none rounded-full"
+            style={{ accentColor: PAF.petrol, background: `linear-gradient(90deg, ${PAF.petrol} ${sim.proporzioneDPI}%, #cbd5e1 ${sim.proporzioneDPI}%)` }}
           />
-          <div className="mt-1 text-right text-sm font-extrabold" style={{ color: PAF.petrol }}>{sim.proporzioneDPI}%</div>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+            <span>0 — mai</span>
+            <span className="text-2xl font-extrabold" style={{ color: PAF.petrol }}>{(sim.proporzioneDPI / 100).toFixed(2)}</span>
+            <span>1 — sempre</span>
+          </div>
         </div>
       )}
 
@@ -878,15 +955,26 @@ function SelezionaDPI({ nav, sim }: { nav: Nav; sim: SimState }) {
 
 /* ===================== COMPILA CAMPI ======================== */
 function CompilaCampi({ nav, sim }: { nav: Nav; sim: SimState }) {
+  const totaleOre = sim.anniLav * sim.settimaneLav * sim.giorniSett * sim.oreGiorno;
   return (
     <div>
-      <SectionTitle>Dati di esposizione</SectionTitle>
+      <div className="text-center text-sm font-bold" style={{ color: PAF.petrol }}>Sezione Lavoro</div>
+      <SectionTitle>Compila i campi richiesti</SectionTitle>
       <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Inserisci la tua <Kw>storia lavorativa</Kw> per stimare l'esposizione cumulata.
+        Compila gli spazi con tutte le informazioni richieste, inserendo i dati in modo{" "}
+        <Kw>completo e accurato</Kw>.
       </p>
       <div className="mx-auto mt-6 grid max-w-md gap-4">
-        <Campo label="Ore di esposizione al giorno" value={sim.oreGiorno} onChange={sim.setOreGiorno} min={0} max={16} suffix="ore" />
-        <Campo label="Anni di esposizione" value={sim.anni} onChange={sim.setAnni} min={0} max={50} suffix="anni" />
+        <Campo label="Anni lavorativi" value={sim.anniLav} onChange={sim.setAnniLav} min={0} max={60} suffix="anni" />
+        <Campo label="Settimane lavorative" value={sim.settimaneLav} onChange={sim.setSettimaneLav} min={0} max={52} suffix="sett./anno" />
+        <Campo label="Giorni a settimana" value={sim.giorniSett} onChange={sim.setGiorniSett} min={0} max={7} suffix="gg/sett." />
+        <Campo label="Ore giornaliere" value={sim.oreGiorno} onChange={sim.setOreGiorno} min={0} max={16} suffix="ore/gg" />
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-500">Totale ore (calcolato)</label>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold" style={{ color: PAF.petrol }}>
+            {totaleOre.toLocaleString("it-IT")} ore
+          </div>
+        </div>
         <PrimaryButton full onClick={() => nav.go("outputSimulatore")}>
           Calcola <Gauge size={16} />
         </PrimaryButton>
@@ -906,7 +994,7 @@ function Campo({ label, value, onChange, min, max, suffix }: { label: string; va
           min={min}
           max={max}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500"
         />
         <span className="text-xs text-slate-400">{suffix}</span>
       </div>
@@ -916,30 +1004,30 @@ function Campo({ label, value, onChange, min, max, suffix }: { label: string; va
 
 /* ===================== OUTPUT SIMULATORE ==================== */
 function OutputSimulatore({ nav, sim }: { nav: Nav; sim: SimState }) {
-  const [popClassi, setPopClassi] = React.useState(false);
+  const [popInfo, setPopInfo] = React.useState(false);
+  const snr = sim.dpiSelezionato?.snr ?? 25;
   const r = calcolaLex({
-    sforzo: sim.sforzo || "alzato",
+    sforzo: sim.sforzo || "alta",
     oreGiorno: sim.oreGiorno,
     usaDPI: !!sim.usaDPI,
-    attenuazioneDPI: sim.dpiSelezionato?.snr ?? 25, // SNR del dispositivo scelto dalla banca dati PAF
+    attenuazioneDPI: Math.max(0, snr - 4), // il sistema sottrae 4 dB all'SNR del DPI (slide 12)
     proporzioneDPI: sim.proporzioneDPI / 100,
   });
-  const classeSenza = classeDa(r.lexSenza);
-  const classeCon = classeDa(r.lexCon);
 
   return (
     <div>
-      <SectionTitle>Risultato della simulazione</SectionTitle>
+      <div className="text-center text-sm font-bold" style={{ color: PAF.petrol }}>Sezione Lavoro</div>
+      <SectionTitle>Output del simulatore</SectionTitle>
       <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Stima del tuo <Kw>LEX,8h annuo</Kw> e della <Kw>classe di esposizione</Kw>
+        Stima della tua <Kw>esposizione annua equivalente</Kw> al rumore
         {sim.professione ? <> per la professione: <Kw>{sim.professione}</Kw></> : null}.
       </p>
 
-      {/* Due badge: senza attenuazione DPI / con attenuazione DPI */}
+      {/* Due badge: senza / con attenuazione DPI — solo valore LEX, nessuna classe */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <CardLex titolo="Senza attenuazione DPI" lex={r.lexSenza} classe={classeSenza} />
+        <CardLex titolo="Senza attenuazione DPI" lex={r.lexSenza} />
         {sim.usaDPI ? (
-          <CardLex titolo="Con attenuazione DPI" lex={r.lexCon} classe={classeCon} highlight />
+          <CardLex titolo="Con attenuazione DPI" lex={r.lexCon} highlight />
         ) : (
           <div className="grid flex-1 place-items-center rounded-lg border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">
             Non hai indicato l'uso dei DPI: nessuna attenuazione applicata.
@@ -949,52 +1037,48 @@ function OutputSimulatore({ nav, sim }: { nav: Nav; sim: SimState }) {
 
       {sim.usaDPI && (
         <p className="mt-3 text-center text-xs text-slate-500">
-          {sim.dpiSelezionato ? <>Con <Kw>{sim.dpiSelezionato.marca} {sim.dpiSelezionato.modello}</Kw> (SNR {sim.dpiSelezionato.snr} dB), </> : null}
-          indossati per il <Kw>{sim.proporzioneDPI}%</Kw> del tempo, l'esposizione si riduce di{" "}
+          {sim.dpiSelezionato ? <>Con <Kw>{sim.dpiSelezionato.marca} {sim.dpiSelezionato.modello}</Kw> (SNR {sim.dpiSelezionato.snr} dB, −4 dB applicati), </> : null}
+          indossato per una proporzione di <Kw>{(sim.proporzioneDPI / 100).toFixed(2)}</Kw>, l'esposizione si riduce di{" "}
           <Kw>{Math.max(0, Math.round((r.lexSenza - r.lexCon) * 10) / 10)} dB(A)</Kw>.
         </p>
       )}
 
-      {/* Box classi di rischio → D.Lgs 81/08 art. 189 */}
-      <button
-        onClick={() => setPopClassi(true)}
-        className="mt-6 flex w-full items-center justify-between rounded-lg border p-4 text-left text-sm transition hover:shadow-sm"
-        style={{ borderColor: PAF.petrol, background: "#F0FDFA" }}
-      >
-        <span className="flex items-center gap-2 font-semibold" style={{ color: PAF.petrol }}>
-          <Info size={16} /> Sei interessato a sapere quali sono le classi di rischio? Clicca qui
-        </span>
-        <ChevronRight size={16} style={{ color: PAF.petrol }} />
-      </button>
-
       <div className="mt-5">
         <AlertBox title="Attenzione: risultato soggettivo">
-          I livelli di rumore e la classe derivano da <Kw>stime soggettive</Kw> basate sulla tua percezione.
-          La classe è attribuita secondo i criteri del <Kw>D.Lgs 81/08, art. 189</Kw>. Questi risultati{" "}
-          <Kw>non derivano da misurazioni strumentali</Kw>: per una valutazione professionale rivolgiti a esperti.
+          I livelli di rumore riportati derivano da <Kw>stime soggettive</Kw> basate sulla tua percezione e{" "}
+          <Kw>non derivano da misurazioni strumentali</Kw> né dal calcolo di un indice oggettivo di esposizione.
+          Le informazioni hanno finalità <Kw>preventive e non certificative</Kw>: per una valutazione
+          professionale rivolgiti a esperti con strumentazione idonea.
         </AlertBox>
       </div>
+
+      <button
+        onClick={() => setPopInfo(true)}
+        className="mt-4 flex items-center gap-1 text-sm font-semibold underline"
+        style={{ color: PAF.petrol }}
+      >
+        Per approfondire clicca qui: Valutazione del Rischio del Rumore <ChevronRight size={15} />
+      </button>
 
       <div className="mt-6 text-center">
         <PrimaryButton onClick={() => nav.go("areaOperativa")}>Torna all'area operativa</PrimaryButton>
       </div>
 
-      {popClassi && (
-        <Modal title="Classi di rischio — D.Lgs 81/08, art. 189" onClose={() => setPopClassi(false)}>
+      {popInfo && (
+        <Modal title="Valutazione del rischio rumore — D.Lgs 81/08, art. 189" onClose={() => setPopInfo(false)}>
           <p className="mb-3">
             Il <Kw>D.Lgs 81/08, art. 189</Kw> fissa, in funzione del LEX,8h, i valori di azione e il valore
             limite di esposizione al rumore:
           </p>
-          <div className="grid gap-2">
-            <ClasseRiga c={{ nome: "BASSA", color: PAF.green, descrizione: "LEX,8h < 80 dB(A) — sotto il valore inferiore di azione." }} />
-            <ClasseRiga c={{ nome: "MEDIA", color: PAF.amber, descrizione: "80 ≤ LEX,8h < 85 dB(A) — tra valore inferiore e superiore di azione." }} />
-            <ClasseRiga c={{ nome: "ALTA", color: PAF.orange, descrizione: "85 ≤ LEX,8h < 87 dB(A) — tra valore superiore di azione e valore limite." }} />
-            <ClasseRiga c={{ nome: "MOLTO ALTA", color: PAF.redClass, descrizione: "LEX,8h ≥ 87 dB(A) — oltre il valore limite di esposizione." }} />
-          </div>
+          <ul className="grid gap-1.5 text-[13px]">
+            <li>· <Kw>Valori inferiori di azione</Kw>: LEX,8h = 80 dB(A); ppeak = 112 Pa (135 dB(C)).</li>
+            <li>· <Kw>Valori superiori di azione</Kw>: LEX,8h = 85 dB(A); ppeak = 140 Pa (137 dB(C)).</li>
+            <li>· <Kw>Valori limite di esposizione</Kw>: LEX,8h = 87 dB(A); ppeak = 200 Pa (140 dB(C)).</li>
+          </ul>
           <div className="mt-4">
             <AlertBox>
-              I valori riportati hanno scopo <Kw>informativo</Kw>. La classificazione di legge presuppone
-              misurazioni strumentali eseguite da personale qualificato.
+              I valori hanno scopo <Kw>informativo</Kw>. La classificazione di legge presuppone misurazioni
+              strumentali eseguite da personale qualificato.
             </AlertBox>
           </div>
         </Modal>
@@ -1003,20 +1087,16 @@ function OutputSimulatore({ nav, sim }: { nav: Nav; sim: SimState }) {
   );
 }
 
-function CardLex({ titolo, lex, classe, highlight }: { titolo: string; lex: number; classe: Classe; highlight?: boolean }) {
+function CardLex({ titolo, lex, highlight }: { titolo: string; lex: number; highlight?: boolean }) {
   return (
     <div className="flex-1 rounded-lg border p-4" style={{ borderColor: highlight ? PAF.green : PAF.line, background: highlight ? "#F0FDF4" : "#fff" }}>
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{titolo}</div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-extrabold" style={{ color: PAF.petrol }}>{lex.toFixed(1)}</span>
+      <div className="mt-2 text-[11px] text-slate-400">Esposizione annua equivalente stimata</div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-4xl font-extrabold" style={{ color: PAF.petrol }}>{lex.toFixed(1)}</span>
         <span className="text-sm font-bold text-slate-500">dB(A)</span>
       </div>
-      <div className="mt-3">
-        <span className="inline-block rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: classe.color }}>
-          Classe {classe.nome}
-        </span>
-        <p className="mt-1.5 text-[11px] text-slate-500">{classe.descrizione}</p>
-      </div>
+      <div className="mt-1 text-[11px] text-slate-400">LEX,8h annuo stimato</div>
     </div>
   );
 }
@@ -1099,7 +1179,7 @@ function EffettiDiretti({ nav }: { nav: Nav }) {
         <div className="mb-2 flex items-center justify-between">
           <h4 className="text-sm font-extrabold" style={{ color: PAF.petrol }}>{studio.autore}, {studio.anno}</h4>
           <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white" style={{ background: colQ(studio.q) }}>
-            Qualità delle evidenze: {studio.q}
+            Qualità (JBI): {studio.q}
           </span>
         </div>
         <p className="text-sm leading-relaxed text-slate-600">{studio.sintesi}</p>
@@ -1122,26 +1202,35 @@ function EffettiDiretti({ nav }: { nav: Nav }) {
   );
 }
 
-/* ===================== QUALITA EVIDENZE ==================== */
+/* ===================== QUALITA EVIDENZE (JBI) ============== */
 function QualitaEvidenze() {
   return (
     <div>
       <SectionTitle>Qualità delle evidenze</SectionTitle>
       <p className="mt-4 text-sm leading-relaxed text-slate-600">
-        La <Kw>qualità delle evidenze</Kw> esprime quanto possiamo essere <Kw>fiduciosi</Kw> che la stima
-        di un effetto sia corretta. Non riguarda un singolo numero, ma la <Kw>solidità complessiva</Kw> dei
-        dati che lo sostengono.
+        La <Kw>qualità delle evidenze</Kw> esprime quanto possiamo essere <Kw>fiduciosi</Kw> che il
+        risultato di uno studio sia corretto e affidabile. Per valutarla utilizziamo gli strumenti del{" "}
+        <Kw>Joanna Briggs Institute (JBI)</Kw>.
       </p>
 
-      <h3 className="mt-6 text-sm font-bold" style={{ color: PAF.petrol }}>Come viene valutata</h3>
-      <p className="mt-2 text-sm text-slate-600">La valutazione tiene conto principalmente di:</p>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+        <div className="mb-1 flex items-center gap-2 font-bold" style={{ color: PAF.petrol }}>
+          <BookOpen size={15} /> Lo strumento JBI
+        </div>
+        Il JBI mette a disposizione delle <Kw>checklist di valutazione critica</Kw> (critical appraisal)
+        specifiche per il <Kw>disegno dello studio</Kw> (studi randomizzati, di coorte, caso-controllo,
+        trasversali, ecc.). Ogni studio viene esaminato voce per voce per stimarne la{" "}
+        <Kw>qualità metodologica</Kw> e il <Kw>rischio di bias</Kw>.
+      </div>
+
+      <h3 className="mt-6 text-sm font-bold" style={{ color: PAF.petrol }}>Cosa valutano le checklist JBI</h3>
       <ul className="mt-2 grid gap-2">
         {[
-          ["Disegno dello studio", "Studi sperimentali e coorti prospettiche pesano più di studi trasversali."],
-          ["Rischio di bias", "Errori sistematici nel reclutamento, nella misura o nell'analisi."],
-          ["Coerenza", "Risultati concordi tra studi diversi rafforzano la fiducia."],
-          ["Trasferibilità (directness)", "Quanto popolazione, esposizione ed esiti corrispondono al caso reale."],
-          ["Precisione", "Ampiezza degli intervalli di confidenza e numerosità del campione."],
+          ["Validità del campione", "Criteri di inclusione chiari e popolazione rappresentativa."],
+          ["Misurazione dell'esposizione e degli esiti", "Strumenti validi e affidabili, applicati in modo uniforme."],
+          ["Controllo dei fattori di confondimento", "Identificazione e gestione delle variabili che possono distorcere il risultato."],
+          ["Adeguatezza dell'analisi statistica", "Metodi appropriati al disegno e ai dati."],
+          ["Completezza del follow-up", "Gestione di abbandoni e dati mancanti."],
         ].map(([t, d]) => (
           <li key={t} className="rounded-md border border-slate-200 px-4 py-3 text-sm">
             <span className="font-bold">{t}</span>
@@ -1150,12 +1239,16 @@ function QualitaEvidenze() {
         ))}
       </ul>
 
-      <h3 className="mt-6 text-sm font-bold" style={{ color: PAF.petrol }}>I livelli</h3>
+      <h3 className="mt-6 text-sm font-bold" style={{ color: PAF.petrol }}>Dal punteggio JBI al livello di qualità</h3>
+      <p className="mt-2 text-sm text-slate-600">
+        In base alla quota di criteri soddisfatti nella checklist, allo studio viene attribuito un livello:
+      </p>
       <div className="mt-2 grid gap-2">
-        <ClasseRiga c={{ nome: "ALTA", color: PAF.green, descrizione: "Alta fiducia: è improbabile che nuovi studi cambino la stima." }} />
-        <ClasseRiga c={{ nome: "MEDIA", color: PAF.amber, descrizione: "Fiducia moderata: nuovi studi potrebbero modificarla." }} />
-        <ClasseRiga c={{ nome: "BASSA", color: PAF.orange, descrizione: "Bassa fiducia: la stima è incerta e potrà cambiare." }} />
+        <ClasseRiga c={{ nome: "ALTA", color: PAF.green, descrizione: "La maggior parte dei criteri JBI è soddisfatta: basso rischio di bias." }} />
+        <ClasseRiga c={{ nome: "MEDIA", color: PAF.amber, descrizione: "Criteri soddisfatti solo in parte: rischio di bias moderato." }} />
+        <ClasseRiga c={{ nome: "BASSA", color: PAF.orange, descrizione: "Pochi criteri soddisfatti: rischio di bias elevato, risultato incerto." }} />
       </div>
+      <p className="mt-3 text-[11px] italic text-slate-400">Rif.: Joanna Briggs Institute (JBI) Critical Appraisal Tools.</p>
     </div>
   );
 }
@@ -1180,7 +1273,7 @@ function EffettiIndiretti() {
 
 /* ========================= CANDIDATI ======================= */
 function Candidati({ nav: _nav }: { nav: Nav }) {
-  const MAIL = "quietbrain@hsantalucia.it"; // segnaposto: sostituire con la mail reale
+  const MAIL = "info@hsantalucia.it"; // slide 25
   return (
     <div>
       <SectionTitle>Candidati come volontario</SectionTitle>
@@ -1227,8 +1320,8 @@ function EspertiMenu({ nav }: { nav: Nav }) {
         />
         <ServiceCard
           icon={<Database size={20} />}
-          title="Domande d'interesse per esperti"
-          desc={<>Poni al database domande predefinite e scopri <Kw>come viene fatto il calcolo</Kw>.</>}
+          title="Interroga il database"
+          desc={<>Poni al database le <Kw>queries</Kw> predefinite e scopri <Kw>come viene fatto il calcolo</Kw>, con esempio sul foglio Excel.</>}
           onClick={() => nav.go("domandeEsperti")}
         />
       </div>
@@ -1237,60 +1330,143 @@ function EspertiMenu({ nav }: { nav: Nav }) {
 }
 
 function EspertiEsplora() {
-  const [open, setOpen] = React.useState<string | null>(null);
+  const [open, setOpen] = React.useState<string | null>("pop");
+  const [pop, setPop] = React.useState<{ titolo: string; testo: string } | null>(null);
   return (
     <div>
-      <h3 className="mb-4 text-sm font-bold">Esplora i dati per criteri di interesse</h3>
+      <h3 className="mb-1 text-sm font-bold">Esplora i dati per criteri di interesse</h3>
+      <p className="mb-4 text-xs text-slate-500">
+        Seleziona i criteri (<Kw>input</Kw>); l'anteprima del database mostra le variabili corrispondenti
+        (<Kw>output</Kw>). Le voci con <Info size={11} className="inline" /> aprono una spiegazione.
+      </p>
+
       <div className="grid gap-2">
         {MENU_ESPERTI.map((m) => (
           <div key={m.id} className="rounded-md border border-slate-200">
-            <button
-              onClick={() => setOpen(open === m.id ? null : m.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold"
-            >
+            <button onClick={() => setOpen(open === m.id ? null : m.id)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold">
               {m.label}
               <ChevronDown size={16} className={`transition ${open === m.id ? "rotate-180" : ""}`} />
             </button>
             {open === m.id && (
-              <div className="border-t border-slate-100 px-4 py-3">
-                <div className="flex flex-wrap gap-2">
-                  {m.voci.map((v) => (
-                    <span key={v} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">{v}</span>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3">
+                {m.voci.map((v) => (
+                  <span key={v.label} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    {v.label}
+                    {v.info && (
+                      <button onClick={() => setPop({ titolo: v.label, testo: v.info! })} aria-label="Spiegazione" className="text-slate-400 hover:text-slate-700">
+                        <Info size={13} />
+                      </button>
+                    )}
+                  </span>
+                ))}
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {/* Anteprima del foglio Excel del database */}
+      <h3 className="mb-2 mt-6 flex items-center gap-2 text-sm font-bold" style={{ color: PAF.petrol }}>
+        <FileSpreadsheet size={16} /> Anteprima del database (output)
+      </h3>
+      <ExcelPreview />
+
+      {pop && (
+        <Modal title={pop.titolo} onClose={() => setPop(null)}>
+          {pop.testo}
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* Tabella in stile foglio Excel */
+function ExcelPreview() {
+  const head = ["ID", "Gruppo", "LEX,8h", "MMSE", "BEPTA", "MTA"];
+  const rows = [
+    ["S001", "Sani", "78,4", "29", "18", "0"],
+    ["S002", "SCD", "84,1", "27", "26", "1"],
+    ["S003", "MCI", "86,7", "24", "34", "2"],
+    ["S004", "Demenza Lieve", "88,2", "20", "41", "3"],
+  ];
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-300">
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr>
+            <th className="border border-slate-200 bg-slate-100 px-2 py-1 text-left font-bold text-slate-600"> </th>
+            {head.map((h) => (
+              <th key={h} className="border border-slate-200 bg-slate-100 px-3 py-1.5 text-left font-bold text-slate-700">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="border border-slate-200 bg-slate-50 px-2 py-1 text-center font-semibold text-slate-400">{i + 1}</td>
+              {r.map((c, j) => (
+                <td key={j} className="border border-slate-200 px-3 py-1.5 text-slate-700">{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function DomandeEsperti() {
-  const [open, setOpen] = React.useState<number | null>(0);
+  const [open, setOpen] = React.useState<number | null>(1);
   return (
     <div>
-      <SectionTitle>Domande d'interesse per esperti</SectionTitle>
+      <SectionTitle>Interroga il database</SectionTitle>
       <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Seleziona una domanda: oltre alla risposta, ti mostriamo <Kw>come viene fatto il calcolo</Kw> sul database.
+        L'esperto può interrogare il database a partire dalle <Kw>queries</Kw> proposte. Seleziona una
+        domanda: oltre alla logica del calcolo, dove disponibile vedi l'<Kw>esempio del risultato sul foglio Excel</Kw>.
       </p>
       <div className="mt-6 grid gap-2">
         {DOMANDE_ESPERTI.map((d, i) => (
           <div key={i} className="rounded-md border border-slate-200">
-            <button
-              onClick={() => setOpen(open === i ? null : i)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold"
-            >
-              {d.q}
-              <ChevronDown size={16} className={`shrink-0 transition ${open === i ? "rotate-180" : ""}`} />
+            <button onClick={() => setOpen(open === i ? null : i)} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left text-sm font-semibold">
+              <span><span className="mr-1.5" style={{ color: PAF.petrol }}>{i + 1}.</span>{d.q}</span>
+              <ChevronDown size={16} className={`mt-0.5 shrink-0 transition ${open === i ? "rotate-180" : ""}`} />
             </button>
             {open === i && (
-              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
                 <div className="mb-1 flex items-center gap-2 text-xs font-bold" style={{ color: PAF.petrol }}>
                   <Info size={14} /> Come viene fatto il calcolo
                 </div>
-                {d.calcolo}
+                <p className="text-sm leading-relaxed text-slate-600">{d.calcolo}</p>
+
+                {d.excel && (
+                  <div className="mt-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs font-bold" style={{ color: PAF.petrol }}>
+                      <FileSpreadsheet size={14} /> Esempio del risultato — {ESEMPIO_EXCEL_MMSE.titolo}
+                    </div>
+                    <div className="overflow-x-auto rounded-md border border-slate-300">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr>
+                            {ESEMPIO_EXCEL_MMSE.intestazioni.map((h) => (
+                              <th key={h} className="border border-slate-200 bg-slate-100 px-3 py-1.5 text-left font-bold text-slate-700">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ESEMPIO_EXCEL_MMSE.righe.map((r, ri) => (
+                            <tr key={ri} className={ri === ESEMPIO_EXCEL_MMSE.righe.length - 1 ? "font-bold" : ""}>
+                              {r.map((c, ci) => (
+                                <td key={ci} className="border border-slate-200 px-3 py-1.5 text-slate-700">{c}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold" style={{ color: PAF.petrol }}>{ESEMPIO_EXCEL_MMSE.esito}</p>
+                    <p className="mt-1 text-[11px] italic text-slate-400">Valori dimostrativi: il calcolo reale è eseguito da una macro sul database sperimentale.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1307,8 +1483,8 @@ function RicercatoriLogin({ nav }: { nav: Nav }) {
       <SectionTitle>Ricercatori ed enti</SectionTitle>
       <p className="mx-auto mt-3 max-w-md text-center text-sm text-slate-600">Accedi per consultare o caricare i dati.</p>
       <div className="mx-auto mt-6 grid max-w-sm gap-3">
-        <input placeholder="Email" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500" />
-        <input placeholder="Password" type="password" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500" />
+        <input placeholder="Email" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500" />
+        <input placeholder="Password" type="password" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500" />
         <PrimaryButton full onClick={() => nav.go("ricercatoriMenu")}>Accedi</PrimaryButton>
         <button onClick={() => nav.go("creaAccount")} className="text-xs font-semibold underline" style={{ color: PAF.petrol }}>
           Non hai un account? Creane uno
@@ -1319,14 +1495,55 @@ function RicercatoriLogin({ nav }: { nav: Nav }) {
 }
 
 function CreaAccount({ nav }: { nav: Nav }) {
+  const [privacy, setPrivacy] = React.useState(false);
   return (
     <div>
       <SectionTitle>Crea un account</SectionTitle>
-      <div className="mx-auto mt-6 grid max-w-sm gap-3">
-        <input placeholder="Nome e cognome" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500" />
-        <input placeholder="Ente / Istituzione" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500" />
-        <input placeholder="Email istituzionale" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500" />
-        <PrimaryButton full onClick={() => nav.go("ricercatoriMenu")}>Crea account</PrimaryButton>
+      <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
+        Per visualizzare i dati caricati finora o caricare a tua volta i dati raccolti in precedenti
+        indagini, crea un account utente.
+      </p>
+      <div className="mx-auto mt-6 grid max-w-md gap-3">
+        {[
+          "Nome *",
+          "Cognome *",
+          "E-mail (nome utente) *",
+          "Numero di iscrizione all'Albo di appartenenza",
+          "Università / Ente di afferenza",
+          "Titolo",
+        ].map((ph) => (
+          <input key={ph} placeholder={ph} className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500" />
+        ))}
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span>PhD:</span>
+          <label className="flex items-center gap-1"><input type="radio" name="phd" /> Sì</label>
+          <label className="flex items-center gap-1"><input type="radio" name="phd" /> No</label>
+        </div>
+        <input placeholder="Password *" type="password" className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500" />
+        <p className="text-[11px] text-slate-400">* dato obbligatorio</p>
+
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+          I dati saranno mostrati in forma <Kw>aggregata</Kw> e non saranno visibili informazioni sensibili
+          agli altri utenti.
+        </div>
+        <button className="flex items-center gap-2 text-sm font-semibold underline" style={{ color: PAF.petrol }}>
+          <Download size={15} /> Scarica il pdf del documento «Privacy»
+        </button>
+        <button onClick={() => setPrivacy(!privacy)} className="flex items-center gap-2 text-left text-sm text-slate-700">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded border" style={{ borderColor: privacy ? PAF.petrol : "#cbd5e1", background: privacy ? PAF.petrol : "#fff" }}>
+            {privacy && <span className="text-[11px] font-bold text-white">✓</span>}
+          </span>
+          Ho letto e accetto le condizioni di utilizzo
+        </button>
+
+        <button
+          onClick={() => nav.go("ricercatoriMenu")}
+          disabled={!privacy}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white transition disabled:opacity-50"
+          style={{ background: PAF.orange }}
+        >
+          CREA ACCOUNT
+        </button>
       </div>
     </div>
   );
@@ -1354,53 +1571,268 @@ function RicercatoriMenu({ nav }: { nav: Nav }) {
   );
 }
 
+/* ===================== DATABASE: VARIABILI (slide 39) ========== */
+const DB_TREE: { gruppo: string; sotto: { nome: string; test: string[] }[] }[] = [
+  {
+    gruppo: "Valutazione Neuropsichiatrica e Neuropsicologica",
+    sotto: [
+      { nome: "Quadro Cognitivo Globale", test: ["Clinical Dementia Rating scale (Morris, 1997)", "Mini Mental State Examination (Measso et al., 1993)", "T.I.B. — Test di Intelligenza Breve (Sartori et al., 2002)"] },
+      { nome: "Memoria", test: ["FCSRT (Frasson et al., 2011) — rievoc. imm./diff.", "Figura di Rey-Osterrieth (Caffarra et al., 2002) — diff."] },
+      { nome: "Attenzione e Funzioni Esecutive", test: ["TMT A-B (Siciliano et al., 2019)"] },
+      { nome: "Linguaggio", test: ["Fluenza verbale fonologica (Costa et al., 2013)", "Fluenza verbale semantica (Costa et al., 2013)", "Completamento frasi del BAC (De Beni et al., 2008)"] },
+      { nome: "Prassia costruttiva complessa", test: ["Figura di Rey-Osterrieth (Caffarra et al., 2002) — copia"] },
+    ],
+  },
+  {
+    gruppo: "Valutazione Audiometrica",
+    sotto: [{ nome: "Audiometria", test: ["Timpanometria (curva A-D)", "Riflesso stapediale (500–2000 Hz)", "Audiometria (125–8000 Hz)", "Valore BEPTA (Better Ear Pure Tone Average)"] }],
+  },
+  {
+    gruppo: "Valutazione Funzionale e Comportamentale",
+    sotto: [
+      { nome: "Valutazione funzionale", test: ["Independent Living Skills Survey (Wallace et al., 2000)"] },
+      { nome: "Scale comportamentali", test: ["Neuropsychiatric Inventory (Cummings et al., 1994)", "Starkstein Apathy Scale (Starkstein et al., 1998)", "Beck Depression Inventory (Cummings et al., 2002)", "Beck Cognitive Insight Scale (Beck et al., 2004)"] },
+    ],
+  },
+  {
+    gruppo: "Neuroimaging",
+    sotto: [
+      { nome: "Indici Neuroradiologici", test: ["Scala di Fazekas (iperintensità sostanza bianca)", "MTA (Medial Temporal lobe Atrophy score)", "ERICA (Entorhinal Cortex Atrophy score)"] },
+      { nome: "Analisi Morfometrica MRI", test: ["Volume MRI (segmentazione sottocorticale)", "Spessore Corticale MRI (Cortical Thickness)"] },
+    ],
+  },
+  {
+    gruppo: "Wellbeing e Consapevolezza",
+    sotto: [
+      { nome: "Wellbeing", test: ["Cri-q (Nucci et al., 2012)", "SF-DEM (Sommerlad et al., 2017)", "Domande questionario SiRene (Brink et al., 2019)", "Loneliness (De Jong & Van Tilburg, 2006)"] },
+      { nome: "Consapevolezza", test: ["Cognitive Function Instrument (Chipi et al., 2019)", "Anosognosia Questionnaire-Dementia (Gambina et al., 2015)", "General Self-Efficacy Scale (Schwarzer et al., 1995)"] },
+    ],
+  },
+  {
+    gruppo: "Valutazione Noise Related",
+    sotto: [{ nome: "Esposizione al rumore", test: ["Hearing Self-Assessment Questionnaire (Bonetti et al., 2017)", "NESI — Noise Exposure Structured Interview (Guest et al., 2018)"] }],
+  },
+];
+
+/* Conteggio delle variabili/test foglia nel database */
+const DB_COUNT = DB_TREE.reduce((tot, g) => tot + g.sotto.reduce((s, x) => s + x.test.length, 0), 0);
+
+/* DOI per ciascun test: inserire qui il codice DOI (es. "10.1234/abcd").
+ * Finché un DOI non è presente, il link rimanda a una ricerca della reference. */
+const DOI_MAP: Record<string, string> = {
+  // "Mini Mental State Examination (Measso et al., 1993)": "10.xxxx/yyyy",
+};
+function refHref(label: string): string {
+  const d = DOI_MAP[label];
+  return d ? `https://doi.org/${d}` : `https://search.crossref.org/?q=${encodeURIComponent(label)}`;
+}
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/* Dati per la markmap (stessa struttura del file markmap.html) */
+function buildMarkmapData() {
+  return {
+    content: "Database QuietBrain",
+    children: DB_TREE.map((g) => ({
+      content: g.gruppo,
+      children: g.sotto.map((s) => ({
+        content: s.nome,
+        children: s.test.map((t) => ({
+          // nodo foglia come link al DOI
+          content: `<a href="${refHref(t)}" target="_blank" rel="noopener noreferrer" title="Apri reference (DOI)">${escapeHtml(t)}</a>`,
+          children: [] as unknown[],
+        })),
+      })),
+    })),
+  };
+}
+
+/* Mappa mentale interattiva delle variabili (markmap-view via CDN) */
+function DatabaseMindmap() {
+  const svgRef = React.useRef<SVGSVGElement | null>(null);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const ensureScript = (src: string) =>
+      new Promise<void>((resolve, reject) => {
+        const existing = Array.from(document.scripts).find((s) => s.src === src);
+        if (existing) {
+          if ((existing as HTMLScriptElement).dataset.loaded === "1") resolve();
+          else existing.addEventListener("load", () => resolve());
+          return;
+        }
+        const el = document.createElement("script");
+        el.src = src;
+        el.dataset.loaded = "0";
+        el.onload = () => { el.dataset.loaded = "1"; resolve(); };
+        el.onerror = () => reject(new Error("load error: " + src));
+        document.head.appendChild(el);
+      });
+
+    (async () => {
+      try {
+        await ensureScript("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js");
+        await ensureScript("https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js");
+        if (cancelled || !svgRef.current) return;
+        const markmap = (window as unknown as {
+          markmap?: {
+            Markmap: { create: (svg: SVGSVGElement, opts: unknown, data: unknown) => unknown };
+            deriveOptions?: (o: unknown) => unknown;
+          };
+        }).markmap;
+        if (!markmap) { setFailed(true); return; }
+        svgRef.current.innerHTML = "";
+        const colors = { color: ["#0E6E73", "#C8102E", "#16A34A", "#D97706"] };
+        const opts = markmap.deriveOptions ? markmap.deriveOptions(colors) : null;
+        markmap.Markmap.create(svgRef.current, opts, buildMarkmapData());
+      } catch {
+        setFailed(true);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  if (failed) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+        Mappa interattiva non disponibile in questo contesto. L'elenco completo delle variabili è
+        riportato qui sotto.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <svg ref={svgRef} style={{ display: "block", width: "100%", height: 520 }} />
+    </div>
+  );
+}
+
 function FlowchartDatabase() {
-  const VARIABILI = ["Quadro cognitivo globale", "Funzioni esecutive", "Memoria", "Scale comportamentali", "Indici neuroradiologici", "Misure di neuroimaging", "Dati audiometrici", "Storia di esposizione"];
   return (
     <div>
       <SectionTitle>Scarica e consulta i dati</SectionTitle>
       <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Il <Kw>flow chart</Kw> mostra le variabili del database. Da ciascun test si raggiunge la
-        pubblicazione di riferimento tramite il <Kw>DOI</Kw>.
+        Il <Kw>flow chart</Kw> mostra le variabili presenti nel file Excel del database. Cliccando sul
+        singolo test (nell'elenco sotto) sarai reindirizzato alla <Kw>reference</Kw> tramite il <Kw>DOI</Kw>.
+        Poi puoi scaricare l'intero database.
       </p>
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">
-        {VARIABILI.map((v) => (
-          <div key={v} className="flex items-center justify-between rounded-md border border-slate-200 px-4 py-3 text-sm">
-            <span className="font-medium">{v}</span>
-            <span className="text-[10px] text-slate-400">DOI</span>
+
+      <div className="mt-5 flex items-center justify-center gap-2">
+        <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold text-white" style={{ background: PAF.petrol }}>
+          <Database size={15} /> {DB_COUNT} variabili nel database
+        </span>
+      </div>
+
+      <p className="mt-4 text-sm font-bold" style={{ color: PAF.petrol }}>Mappa delle variabili</p>
+      <p className="mb-2 text-xs text-slate-500">Trascina per spostarti, usa la rotellina per lo zoom e clicca sui nodi per espandere o comprimere i rami.</p>
+      <DatabaseMindmap />
+
+      <p className="mt-6 text-sm font-bold" style={{ color: PAF.petrol }}>Elenco completo con riferimenti (DOI)</p>
+      <div className="mt-3 grid gap-3">
+        {DB_TREE.map((g) => (
+          <div key={g.gruppo} className="rounded-lg border border-slate-200 p-4">
+            <div className="text-sm font-extrabold" style={{ color: PAF.petrol }}>{g.gruppo}</div>
+            <div className="mt-2 grid gap-2">
+              {g.sotto.map((s) => (
+                <div key={s.nome}>
+                  <div className="text-xs font-bold text-slate-600">{s.nome}</div>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {s.test.map((t) => (
+                      <a
+                        key={t}
+                        href={refHref(t)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={DOI_MAP[t] ? `Apri DOI: ${DOI_MAP[t]}` : "Apri la reference (DOI da collegare)"}
+                        className="group inline-flex cursor-pointer items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600 transition hover:bg-slate-200 hover:text-[#0E6E73] hover:underline"
+                      >
+                        {t}
+                        <span className="text-slate-400 group-hover:text-[#0E6E73]">· DOI ↗</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
+
       <div className="mt-6 text-center">
-        <PrimaryButton><Download size={16} /> Scarica l'intero database</PrimaryButton>
-        <p className="mt-2 text-[11px] text-slate-400">Segnaposto: collega il file/endpoint reale.</p>
+        <PrimaryButton><Download size={16} /> Scarica il database</PrimaryButton>
+        <p className="mt-2 text-[11px] text-slate-400">Segnaposto: collegare il file/endpoint reale.</p>
       </div>
     </div>
   );
 }
 
+/* ===================== CARICA I TUOI DATI (slide 42) =========== */
 function CaricaDati() {
+  const [accPipeline, setAccPipeline] = React.useState(false);
+  const [accAnon, setAccAnon] = React.useState(false);
+  const MAIL = "info@hsantalucia.it";
+  const Scarica = ({ label }: { label: string }) => (
+    <button className="flex items-center gap-2 text-sm font-semibold underline" style={{ color: PAF.petrol }}>
+      <Download size={15} /> {label}
+    </button>
+  );
+  const Check = ({ on, set, label }: { on: boolean; set: (v: boolean) => void; label: string }) => (
+    <button onClick={() => set(!on)} className="flex items-center gap-2 text-left text-sm text-slate-700">
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded border" style={{ borderColor: on ? PAF.petrol : "#cbd5e1", background: on ? PAF.petrol : "#fff" }}>
+        {on && <span className="text-[11px] font-bold text-white">✓</span>}
+      </span>
+      {label}
+    </button>
+  );
   return (
     <div>
+      <div className="text-center text-sm font-bold" style={{ color: PAF.petrol }}>Sezione Ricerca</div>
       <SectionTitle>Carica i tuoi dati</SectionTitle>
-      <p className="mx-auto mt-3 max-w-lg text-center text-sm text-slate-600">
-        Carica dati <Kw>soggettivi</Kw> (questionari) o <Kw>oggettivi</Kw> (misure strumentali). Il sistema
-        applica una pipeline di controllo qualità.
+      <p className="mt-4 text-sm leading-relaxed text-slate-600">
+        Scegliendo di <Kw>condividere i tuoi dati</Kw> aiuterai a identificare come l'esposizione a rumore
+        in ambiente lavorativo influisce sulle capacità cognitive, fornendo dati essenziali per{" "}
+        <Kw>proteggere la salute dei lavoratori</Kw> e migliorare le strategie di prevenzione.
       </p>
-      <div className="mx-auto mt-6 grid max-w-md gap-3">
-        <div className="grid place-items-center rounded-lg border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
-          Trascina qui il file (CSV / XLSX) oppure clicca per selezionarlo
+
+      {/* Passi: scarica file di interscambio, accetta condizioni, anonimizza */}
+      <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 p-5">
+        <div>
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">1 · Pipeline</div>
+          <Scarica label="Scarica pipeline IRCCS Fondazione Santa Lucia" />
+          <div className="mt-2"><Check on={accPipeline} set={setAccPipeline} label="Ho letto e accetto la pipeline" /></div>
         </div>
-        <div className="rounded-md border border-slate-200 p-4 text-sm text-slate-600">
-          <div className="mb-2 font-bold" style={{ color: PAF.petrol }}>Checklist di caricamento</div>
-          <ul className="grid gap-1 text-xs">
-            <li>· Variabili anonimizzate (nessun dato identificativo)</li>
-            <li>· Tracciato conforme alla legenda del database</li>
-            <li>· Consenso informato disponibile</li>
-          </ul>
+        <div className="border-t border-slate-100 pt-4">
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">2 · File di interscambio</div>
+          <div className="grid gap-2">
+            <Scarica label="Scarica File Excel annotato con i campi selezionati" />
+            <Scarica label="Scarica NESI tradotta in italiano" />
+            <Scarica label="Scarica script «anonimizza soggetti e ricercatore»" />
+            <Scarica label="Scarica script «anonimizza soggetti»" />
+          </div>
+          <div className="mt-3"><Check on={accAnon} set={setAccAnon} label="Ho letto e dichiaro di aver anonimizzato i miei dati" /></div>
         </div>
-        <PrimaryButton full>Invia per la validazione</PrimaryButton>
+        <div className="border-t border-slate-100 pt-4">
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">3 · Ricarica</div>
+          <div className="grid place-items-center rounded-lg border-2 border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">
+            Trascina o seleziona il File Excel con i tuoi dati
+          </div>
+        </div>
+        <PrimaryButton full onClick={() => {}}>
+          <FileSpreadsheet size={16} /> Invia i dati per la validazione
+        </PrimaryButton>
+        {(!accPipeline || !accAnon) && (
+          <p className="text-center text-[11px] text-slate-400">Per inviare devi accettare la pipeline e dichiarare l'anonimizzazione.</p>
+        )}
       </div>
+
+      <p className="mt-4 text-center text-xs italic text-slate-500">
+        Se hai dubbi o domande per il caricamento dei dati, puoi contattare <Kw>{MAIL}</Kw>.
+      </p>
+      <p className="mt-1 text-center text-[11px] text-slate-400">I download e l'upload sono segnaposto: collegare i file/endpoint reali.</p>
     </div>
   );
 }
