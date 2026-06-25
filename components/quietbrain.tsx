@@ -430,52 +430,108 @@ const MENU_ESPERTI: { id: string; label: string; voci: Voce[]; caption?: string 
  * (CountIf/CountIfs), percentuali per gruppo e confronto tra proporzioni
  * in punti percentuali (soglia 10 pp). Nessun test inferenziale
  * (no chi-quadrato, ANOVA, regressione logistica/lineare, odds ratio). */
-const DOMANDE_ESPERTI: { q: string; calcolo: string; excel?: boolean }[] = [
+const DOMANDE_ESPERTI: {
+  q: string;
+  calcolo: string;
+  esempio: { intestazioni: string[]; righe: string[][]; esito: string };
+}[] = [
   {
     q: "Come varia l'esposizione al rumore lavoro-correlato in funzione della tipologia (industriale, aviazione, edile, musica, parlato, marina) nella popolazione studiata?",
     calcolo:
       "Per ciascuna delle 6 tipologie di rumore si contano i soggetti e, per ognuna, quanti ricadono nei livelli di esposizione Alta (0), Media (1) e Bassa (2); si calcolano le percentuali per livello e si individua il profilo prevalente di ogni tipologia. Confronto descrittivo: si evidenziano le tipologie con la maggiore e la minore quota di alta esposizione.",
+    esempio: {
+      intestazioni: ["Tipologia", "N totale", "% Alta (0)", "% Media (1)", "% Bassa (2)", "Profilo prevalente"],
+      righe: [
+        ["Industriale", "24", "58,3%", "25,0%", "16,7%", "Alta"],
+        ["Aviazione", "15", "46,7%", "33,3%", "20,0%", "Alta"],
+        ["Edile", "20", "55,0%", "30,0%", "15,0%", "Alta"],
+        ["Musica", "12", "33,3%", "41,7%", "25,0%", "Media"],
+        ["Parlato", "18", "16,7%", "38,9%", "44,4%", "Bassa"],
+        ["Marina", "17", "41,2%", "35,3%", "23,5%", "Alta"],
+      ],
+      esito:
+        "Tipologia con la maggiore quota di ALTA esposizione: INDUSTRIALE (58,3%). Con la minore: PARLATO (16,7%). Il profilo di esposizione è variabile tra le tipologie lavorative.",
+    },
   },
   {
     q: "La tipologia del rumore ha effetti diversi su rapidità del processo informativo (TMT-A), task switching (TMT-B), memoria a breve termine (FCSRT immediate) e memoria a lungo termine (FCSRT delayed)?",
     calcolo:
       "Per ciascuna tipologia e per ciascun test si conta quanti soggetti cadono sotto il cut-off clinico (TMT-A > 93 sec, TMT-B > 282 sec, FCSRT immediate < 19,59, FCSRT delayed < 6,31) e si calcola la percentuale sotto cut-off. A ogni gruppo si assegna un profilo descrittivo: Critico (≥ 50%), Moderato (25–49%), Buono (< 25%).",
+    esempio: {
+      intestazioni: ["Tipologia", "% TMT-A", "% TMT-B", "% FCSRT imm.", "% FCSRT diff."],
+      righe: [
+        ["Industriale", "52,0%", "48,0%", "40,0%", "36,0%"],
+        ["Aviazione", "33,3%", "26,7%", "20,0%", "20,0%"],
+        ["Edile", "45,0%", "40,0%", "35,0%", "30,0%"],
+        ["Musica", "25,0%", "16,7%", "16,7%", "8,3%"],
+        ["Parlato", "22,2%", "16,7%", "11,1%", "11,1%"],
+        ["Marina", "41,2%", "35,3%", "29,4%", "23,5%"],
+      ],
+      esito:
+        "Profilo più critico per la rapidità (TMT-A) nella tipologia INDUSTRIALE (52,0% sotto cut-off, profilo Critico). L'effetto non è uniforme: varia tra rapidità, task switching e memoria.",
+    },
   },
   {
     q: "I diversi livelli di esposizione al rumore discriminano la presenza o l'assenza di perdita di acuità uditiva?",
     calcolo:
       "Per i tre gruppi di esposizione (Alta, Media, Bassa) si contano i soggetti con e senza perdita uditiva e si calcola la percentuale con perdita. Si confronta la differenza in punti percentuali tra Alta e Bassa esposizione: se ≥ 10 pp l'esposizione discrimina, differenze minori indicano assenza di discriminazione. Nessun test inferenziale.",
+    esempio: {
+      intestazioni: ["Gruppo", "N totale", "N con perdita (1)", "N senza perdita (0)", "% con perdita"],
+      righe: [
+        ["Alta esposizione (0)", "26", "14", "12", "53,8%"],
+        ["Media esposizione (1)", "38", "13", "25", "34,2%"],
+        ["Bassa esposizione (2)", "42", "9", "33", "21,4%"],
+      ],
+      esito:
+        "RISPOSTA: SÌ. Differenza Alta vs Bassa = 32,4 punti percentuali (≥ 10 pp): chi ha alta esposizione presenta perdita uditiva più spesso, quindi l'esposizione discrimina la perdita di acuità uditiva.",
+    },
   },
   {
     q: "I diversi livelli di esposizione al rumore discriminano tra punteggi sopra e sotto il cut-off del MMSE (cut-off = 23)?",
     calcolo:
       "Per i tre gruppi di esposizione si contano i soggetti sotto cut-off (MMSE ≤ 23) e sopra, e si calcola la percentuale sotto cut-off. Si confronta la differenza Alta vs Bassa in punti percentuali (soglia 10 pp) per stabilire se l'esposizione discrimina il punteggio MMSE.",
-    excel: true,
+    esempio: {
+      intestazioni: ["Gruppo", "N totale", "N sotto cutoff (≤23)", "N sopra cutoff (>23)", "% sotto cutoff"],
+      righe: [
+        ["Alta esposizione (0)", "26", "8", "18", "30,8%"],
+        ["Media esposizione (1)", "38", "7", "31", "18,4%"],
+        ["Bassa esposizione (2)", "42", "4", "38", "9,5%"],
+      ],
+      esito:
+        "RISPOSTA: SÌ. Differenza Alta vs Bassa = 21,3 punti percentuali (≥ 10 pp): chi ha alta esposizione cade sotto il cut-off MMSE più spesso, quindi l'esposizione discrimina il punteggio.",
+    },
   },
   {
     q: "Chi è stato esposto ad alti livelli di rumore sviluppa una maggiore perdita di volume dell'ippocampo (MTA ≥ 2)?",
     calcolo:
       "Per i tre gruppi di esposizione si conta quanti soggetti hanno MTA ≥ 2 e si calcola la percentuale. Si confronta la differenza Alta vs Bassa in punti percentuali (soglia 10 pp): una differenza positiva ≥ 10 pp indica maggiore atrofia ippocampale nei più esposti.",
+    esempio: {
+      intestazioni: ["Gruppo", "N totale", "N con MTA ≥ 2", "N con MTA < 2", "% MTA ≥ 2"],
+      righe: [
+        ["Alta esposizione (0)", "26", "9", "17", "34,6%"],
+        ["Media esposizione (1)", "38", "8", "30", "21,1%"],
+        ["Bassa esposizione (2)", "42", "7", "35", "16,7%"],
+      ],
+      esito:
+        "RISPOSTA: SÌ. Differenza Alta vs Bassa = 17,9 punti percentuali (≥ 10 pp): l'atrofia ippocampale (MTA ≥ 2) è più frequente nei soggetti con alta esposizione.",
+    },
   },
   {
     q: "I livelli di esposizione al rumore predicono il punteggio della cognizione globale (MMSE)?",
     calcolo:
       "Per i tre gruppi di esposizione si calcola la percentuale di soggetti sotto il cut-off del MMSE (indicatore della cognizione globale) e si confrontano le proporzioni Alta vs Bassa in punti percentuali (soglia 10 pp). Analisi descrittiva, senza regressione.",
+    esempio: {
+      intestazioni: ["Gruppo", "N totale", "N sotto cutoff (≤23)", "% sotto cutoff"],
+      righe: [
+        ["Alta esposizione (0)", "26", "8", "30,8%"],
+        ["Media esposizione (1)", "38", "7", "18,4%"],
+        ["Bassa esposizione (2)", "42", "4", "9,5%"],
+      ],
+      esito:
+        "RISPOSTA: SÌ. Differenza Alta vs Bassa = 21,3 punti percentuali (≥ 10 pp): la cognizione globale (MMSE) tende a essere più compromessa nei soggetti con alta esposizione.",
+    },
   },
 ];
-
-/* Esempio di risultato della query MMSE sul foglio (macro AnalisiCompletaEsposizioneMMSE) */
-const ESEMPIO_EXCEL_MMSE = {
-  titolo: "AnalisiCompletaEsposizioneMMSE — output sul foglio",
-  intestazioni: ["Gruppo", "N totale", "N sotto cutoff (≤23)", "N sopra cutoff (>23)", "% sotto cutoff"],
-  righe: [
-    ["Alta esposizione (0)", "26", "8", "18", "30,8%"],
-    ["Media esposizione (1)", "38", "7", "31", "18,4%"],
-    ["Bassa esposizione (2)", "42", "4", "38", "9,5%"],
-  ],
-  esito:
-    "Differenza Alta vs Bassa = 21,3 punti percentuali (≥ 10 pp): nel campione i soggetti con alta esposizione cadono sotto il cut-off MMSE più spesso, quindi l'esposizione discrimina il punteggio. Confronto descrittivo tra proporzioni, senza test inferenziale.",
-};
 
 /* ============================================================== */
 /* ============================ APP ============================= */
@@ -1500,35 +1556,33 @@ function DomandeEsperti() {
                 </div>
                 <p className="text-sm leading-relaxed text-slate-600">{d.calcolo}</p>
 
-                {d.excel && (
-                  <div className="mt-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs font-bold" style={{ color: PAF.petrol }}>
-                      <FileSpreadsheet size={14} /> Esempio del risultato — {ESEMPIO_EXCEL_MMSE.titolo}
-                    </div>
-                    <div className="overflow-x-auto rounded-md border border-slate-300">
-                      <table className="w-full border-collapse text-xs">
-                        <thead>
-                          <tr>
-                            {ESEMPIO_EXCEL_MMSE.intestazioni.map((h) => (
-                              <th key={h} className="border border-slate-200 bg-slate-100 px-3 py-1.5 text-left font-bold text-slate-700">{h}</th>
+                <div className="mt-4">
+                  <div className="mb-1 flex items-center gap-2 text-xs font-bold" style={{ color: PAF.petrol }}>
+                    <FileSpreadsheet size={14} /> Esempio di risultato (output sul foglio)
+                  </div>
+                  <div className="overflow-x-auto rounded-md border border-slate-300">
+                    <table className="w-full border-collapse text-xs">
+                      <thead>
+                        <tr>
+                          {d.esempio.intestazioni.map((h) => (
+                            <th key={h} className="border border-slate-200 bg-slate-100 px-3 py-1.5 text-left font-bold text-slate-700">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.esempio.righe.map((r, ri) => (
+                          <tr key={ri}>
+                            {r.map((c, ci) => (
+                              <td key={ci} className="border border-slate-200 px-3 py-1.5 text-slate-700">{c}</td>
                             ))}
                           </tr>
-                        </thead>
-                        <tbody>
-                          {ESEMPIO_EXCEL_MMSE.righe.map((r, ri) => (
-                            <tr key={ri}>
-                              {r.map((c, ci) => (
-                                <td key={ci} className="border border-slate-200 px-3 py-1.5 text-slate-700">{c}</td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="mt-2 text-xs font-semibold" style={{ color: PAF.petrol }}>{ESEMPIO_EXCEL_MMSE.esito}</p>
-                    <p className="mt-1 text-[11px] italic text-slate-400">Valori dimostrativi: il calcolo reale è eseguito da una macro sul database sperimentale.</p>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
+                  <p className="mt-2 rounded-md bg-white p-2.5 text-xs font-semibold" style={{ color: PAF.petrol }}>{d.esempio.esito}</p>
+                  <p className="mt-1 text-[11px] italic text-slate-400">Valori dimostrativi: il calcolo reale è eseguito dalla macro sul database sperimentale.</p>
+                </div>
               </div>
             )}
           </div>
