@@ -1888,22 +1888,42 @@ function FlowchartDatabase() {
 
 /* ===================== CARICA I TUOI DATI (slide 42) =========== */
 function CaricaDati() {
+  const [tipo, setTipo] = React.useState<"sogg" | "ogg">("sogg");
   const [accPipeline, setAccPipeline] = React.useState(false);
   const [accAnon, setAccAnon] = React.useState(false);
+  const [accConf, setAccConf] = React.useState(false); // dichiarazione di conformità (dati oggettivi)
   const MAIL = "info@hsantalucia.it";
+
   const Scarica = ({ label }: { label: string }) => (
-    <button className="flex items-center gap-2 text-sm font-semibold underline" style={{ color: PAF.petrol }}>
-      <Download size={15} /> {label}
+    <button className="flex items-center gap-2 text-left text-sm font-semibold underline" style={{ color: PAF.petrol }}>
+      <Download size={15} className="shrink-0" /> {label}
     </button>
   );
   const Check = ({ on, set, label }: { on: boolean; set: (v: boolean) => void; label: string }) => (
-    <button onClick={() => set(!on)} className="flex items-center gap-2 text-left text-sm text-slate-700">
-      <span className="grid h-5 w-5 shrink-0 place-items-center rounded border" style={{ borderColor: on ? PAF.petrol : "#cbd5e1", background: on ? PAF.petrol : "#fff" }}>
+    <button onClick={() => set(!on)} className="flex items-start gap-2 text-left text-sm text-slate-700">
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border" style={{ borderColor: on ? PAF.petrol : "#cbd5e1", background: on ? PAF.petrol : "#fff" }}>
         {on && <span className="text-[11px] font-bold text-white">✓</span>}
       </span>
       {label}
     </button>
   );
+
+  const pronto = tipo === "sogg" ? (accPipeline && accAnon) : (accPipeline && accAnon && accConf);
+
+  const Toggle = ({ id, titolo, desc }: { id: "sogg" | "ogg"; titolo: string; desc: string }) => {
+    const sel = tipo === id;
+    return (
+      <button
+        onClick={() => setTipo(id)}
+        className="flex-1 rounded-lg border p-3 text-left transition"
+        style={{ borderColor: sel ? PAF.petrol : PAF.line, background: sel ? "#ECFDF5" : "#fff" }}
+      >
+        <div className="text-sm font-bold" style={{ color: sel ? PAF.petrol : PAF.ink }}>{titolo}</div>
+        <div className="text-[11px] text-slate-500">{desc}</div>
+      </button>
+    );
+  };
+
   return (
     <div>
       <div className="text-center text-sm font-bold" style={{ color: PAF.petrol }}>Sezione Ricerca</div>
@@ -1914,34 +1934,75 @@ function CaricaDati() {
         <Kw>proteggere la salute dei lavoratori</Kw> e migliorare le strategie di prevenzione.
       </p>
 
-      {/* Passi: scarica file di interscambio, accetta condizioni, anonimizza */}
-      <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 p-5">
+      {/* Scelta del tipo di dati */}
+      <div className="mt-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Tipo di dati da caricare</div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Toggle id="sogg" titolo="Dati soggettivi" desc="Questionari e test (include la NESI)" />
+          <Toggle id="ogg" titolo="Dati oggettivi" desc="Misure strumentali: audiometria, neuroimaging (senza NESI)" />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 rounded-lg border border-slate-200 p-5">
+        {/* 1 · Pipeline */}
         <div>
           <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">1 · Pipeline</div>
           <Scarica label="Scarica pipeline IRCCS Fondazione Santa Lucia" />
           <div className="mt-2"><Check on={accPipeline} set={setAccPipeline} label="Ho letto e accetto la pipeline" /></div>
         </div>
+
+        {/* 2 · Conformità — solo dati oggettivi */}
+        {tipo === "ogg" && (
+          <div className="border-t border-slate-100 pt-4">
+            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">2 · Conformità dei dati strumentali</div>
+            <Scarica label="Scarica le specifiche tecniche e di conformità (dati oggettivi)" />
+            <div className="mt-2">
+              <Check
+                on={accConf}
+                set={setAccConf}
+                label="Dichiaro la conformità dei dati strumentali al protocollo e alle specifiche tecniche (strumenti calibrati, procedure di acquisizione conformi)."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 3 · File di interscambio */}
         <div className="border-t border-slate-100 pt-4">
-          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">2 · File di interscambio</div>
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+            {tipo === "ogg" ? "3" : "2"} · File di interscambio
+          </div>
           <div className="grid gap-2">
             <Scarica label="Scarica File Excel annotato con i campi selezionati" />
-            <Scarica label="Scarica NESI tradotta in italiano" />
+            {/* La NESI compare solo per i dati soggettivi */}
+            {tipo === "sogg" && <Scarica label="Scarica NESI tradotta in italiano" />}
             <Scarica label="Scarica script «anonimizza soggetti e ricercatore»" />
             <Scarica label="Scarica script «anonimizza soggetti»" />
           </div>
           <div className="mt-3"><Check on={accAnon} set={setAccAnon} label="Ho letto e dichiaro di aver anonimizzato i miei dati" /></div>
         </div>
+
+        {/* 4 · Ricarica */}
         <div className="border-t border-slate-100 pt-4">
-          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">3 · Ricarica</div>
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+            {tipo === "ogg" ? "4" : "3"} · Ricarica
+          </div>
           <div className="grid place-items-center rounded-lg border-2 border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">
-            Trascina o seleziona il File Excel con i tuoi dati
+            Trascina o seleziona il File Excel con i tuoi dati {tipo === "ogg" ? "(misure strumentali)" : "(questionari e test)"}
           </div>
         </div>
-        <PrimaryButton full onClick={() => {}}>
+
+        <button
+          disabled={!pronto}
+          onClick={() => {}}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white transition disabled:opacity-50"
+          style={{ background: PAF.petrol }}
+        >
           <FileSpreadsheet size={16} /> Invia i dati per la validazione
-        </PrimaryButton>
-        {(!accPipeline || !accAnon) && (
-          <p className="text-center text-[11px] text-slate-400">Per inviare devi accettare la pipeline e dichiarare l'anonimizzazione.</p>
+        </button>
+        {!pronto && (
+          <p className="text-center text-[11px] text-slate-400">
+            Per inviare devi accettare la pipeline{tipo === "ogg" ? ", dichiarare la conformità dei dati strumentali" : ""} e dichiarare l'anonimizzazione.
+          </p>
         )}
       </div>
 
